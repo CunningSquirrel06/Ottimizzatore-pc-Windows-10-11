@@ -2,48 +2,48 @@
 echo ================================
 echo Ottimizzazione del PC in corso...
 echo ================================
+echo [1/13]controllo sistema operativo
 sfc /scannow
-echo controllo sistema operativo
 DISM /Online /Cleanup-Image /RestoreHealth
-echo Controllo disco (chkdsk)...
+echo [2/13]Controllo disco (chkdsk)...
 chkdsk C: /scan
 timeout /t 5 >nul
-echo Pulizia Windows Update...
+echo [3/13] Pulizia Windows Update...
 net stop wuauserv >nul 2>&1
 del /f /s /q %windir%\SoftwareDistribution\Download\* >nul 2>&1
 net start wuauserv >nul 2>&1
 timeout /t 5 >nul
-echo Avvio Pulizia disco automatica...
+echo [4/13] Avvio Pulizia disco automatica...
 cleanmgr /sagerun:1
 timeout /t 5 >nul
-echo Pulizia file di log...
+echo [5/13] Pulizia file di log...
 del /f /s /q C:\Windows\Logs\*.* >nul 2>&1
 timeout /t 3 >nul
-echo Pulizia cartelle temporanee dell'utente...
+echo [6/13] Pulizia cartelle temporanee dell'utente...
 del /s /q "%USERPROFILE%\AppData\Local\Microsoft\Windows\INetCache\*" >nul 2>&1
 del /s /q "%USERPROFILE%\AppData\Local\Microsoft\Windows\Temporary Internet Files\*" >nul 2>&1
 timeout /t 5 >nul
-echo Controllo stato SMART del disco...
+echo [7/13]Controllo stato SMART del disco...
 wmic diskdrive get status
 timeout /t 5 >nul
-echo Pulizia avanzata rete...
+echo [8/13] Pulizia avanzata rete...
 nbtstat -R
 nbtstat -RR
 arp -d *
 timeout /t 5 >nul
 
-echo Ottimizzazione del disco...
+echo [9/13] Ottimizzazione del disco...
 defrag C: /O
-echo ottimizzazione dns
+echo [10/13] ottimizzazione dns
 ipconfig /flushdns
-echo Disattivazione temporanea servizi inutili...
+echo [11/13] Disattivazione temporanea servizi inutili...
 net stop DiagTrack >nul 2>&1  :: Servizio di tracciamento diagnostico
 net stop WSearch >nul 2>&1    :: Ricerca indicizzata di Windows
 net stop Fax >nul 2>&1
 net stop RetailDemo >nul 2>&1
 timeout /t 5 >nul
 
-echo aggiornamento app pc
+echo [12/13] aggiornamento app pc
 winget upgrade
 winget upgrade --all 
 winget upgrade --all --include-unknown 
@@ -66,38 +66,43 @@ if exist "%folder%" (
 ) else (
     echo La cartella specificata non esiste.
 )
-echo Vuoi far partire l'antivirs? (si/no) 
-set/p risposta=
-if [%risposta%]==[si]:: Mini Antivirus - Scansione con Windows Defender
-echo Avvio della scansione con Windows Defender...
-"%ProgramFiles%\Windows Defender\MpCmdRun.exe" -Scan -ScanType 1
-if %errorlevel% equ 0 (
-    echo Nessuna minaccia rilevata.
-) else (
-    echo Minacce rilevate! Controlla i dettagli in Windows Defender.
+@echo off
+echo [13/13] Vuoi far partire l'antivirus? (si/no)
+set /p risposta=
+
+rem Controllo case-insensitive e gestisco il ramo “si”
+if /i "%risposta%"=="si" (
+    echo Avvio della scansione con Windows Defender...
+    "%ProgramFiles%\Windows Defender\MpCmdRun.exe" -Scan -ScanType 1
+    if %errorlevel% equ 0 (
+        echo Nessuna minaccia rilevata.
+    ) else (
+        echo Minacce rilevate! Controlla i dettagli in Windows Defender.
+    )
+    echo finito
+    pause
+    goto :eof
 )
 
-if [%risposta%]==[no]:: Notifica per il riavvio del PC
-Add-Type -TypeDefinition @"
-using System;
-using System.Windows.Forms;
+rem Gestisco il ramo “no”
+if /i "%risposta%"=="no" (
+    rem Creo un file VBScript per mostrare il prompt
+    > "%temp%\prompt_riavvio.vbs" echo result = MsgBox( _
+    >> "%temp%\prompt_riavvio.vbs" echo "Per completare le modifiche, è consigliato riavviare il PC.", _
+    >> "%temp%\prompt_riavvio.vbs" echo vbOKCancel + vbExclamation, _
+    >> "%temp%\prompt_riavvio.vbs" echo "Riavvio necessario"^)
 
-public class RestartPrompt
-{
-    public static void ShowMessage()
-    {
-        DialogResult result = MessageBox.Show("Per completare le modifiche, è consigliato riavviare il PC.", "Riavvio necessario", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning);
-        
-        if (result == DialogResult.OK)
-        {
-            System.Diagnostics.Process.Start("shutdown", "/r /t 0");
-        }
-    }
-}
-"@ -Language CSharp
+    >> "%temp%\prompt_riavvio.vbs" echo If result = vbOK Then WScript.Shell.Run "shutdown /r /t 0",1,False
 
-[RestartPrompt]::ShowMessage()
-echo finito
+    rem Eseguo il VBScript
+    cscript //nologo "%temp%\prompt_riavvio.vbs"
+    del "%temp%\prompt_riavvio.vbs"
+
+    echo finito
+    pause
+    goto :eof
+)
+rem Risposta non valida
+echo Risposta non valida. Inserisci “si” o “no” e riprova.
 pause
-
 
