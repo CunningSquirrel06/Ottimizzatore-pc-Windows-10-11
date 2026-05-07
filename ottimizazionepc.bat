@@ -3,8 +3,9 @@ echo ================================
 echo Ottimizzazione del PC in corso...
 echo ================================
 echo [1/13]controllo sistema operativo
-sfc /scannow
 DISM /Online /Cleanup-Image /RestoreHealth
+timeout /t 5 >nul
+sfc /scannow
 echo [2/13]Controllo disco (chkdsk)...
 chkdsk C: /scan
 timeout /t 5 >nul
